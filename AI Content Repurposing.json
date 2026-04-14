@@ -1,0 +1,260 @@
+{
+  "name": "AI Content Repurposing",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "AI Content Repurposing",
+        "formDescription": "Paste any blog URL and get instant social media content!",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Blog URL",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.2,
+      "position": [
+        0,
+        16
+      ],
+      "id": "880c60ae-b6d3-4d48-bb46-a7d1174b3d12",
+      "name": "Form Trigger",
+      "webhookId": "586fee4e-dbd1-426e-9b29-326a2c612631"
+    },
+    {
+      "parameters": {
+        "url": "={{ $json['Blog URL'] }}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "text"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        224,
+        16
+      ],
+      "id": "10ba71c4-b3a0-4486-8882-3ed3fb4b0088",
+      "name": "Scrape Blog"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/chat/completions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"llama-3.3-70b-versatile\",\n  \"messages\": [\n    {\n      \"role\": \"system\",\n      \"content\": \"You are an expert social media content writer. Always respond with ONLY a valid JSON object with keys: linkedin_post, instagram_caption, twitter_thread, email_subject.\"\n    },\n    {\n      \"role\": \"user\",\n      \"content\": \"={{ 'Create social media content from this blog. Return ONLY JSON with keys linkedin_post, instagram_caption, twitter_thread, email_subject. Blog: ' + $('Scrape Blog').item.json.data.substring(0, 1000).replace(/\\\"/g, '').replace(/\\n/g, ' ') }}\"\n    }\n  ]\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        448,
+        16
+      ],
+      "id": "e96ff550-b78b-4334-b6e2-2a69e2f1f4d8",
+      "name": "Groq AI",
+      "credentials": {
+        "groqApi": {
+          "id": "YCrPGqUbTddlN2of",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nconst content = response.choices[0].message.content;\n\n// Clean response\nconst clean = content.replace(/```json|```/g, '').trim();\n\n// Parse JSON\nlet parsed;\ntry {\n  parsed = JSON.parse(clean);\n} catch(e) {\n  parsed = {\n    linkedin_post: 'Error parsing response',\n    instagram_caption: 'Error parsing response',\n    twitter_thread: 'Error parsing response',\n    email_subject: 'Error parsing response'\n  };\n}\n\nreturn [{\n  json: {\n    linkedin_post: parsed.linkedin_post || '',\n    instagram_caption: parsed.instagram_caption || '',\n    twitter_thread: parsed.twitter_thread || '',\n    email_subject: parsed.email_subject || '',\n    url: $('Form Trigger').first().json['Blog URL'],\n    date: new Date().toLocaleString('en-IN', {timeZone: 'Asia/Kolkata'})\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        672,
+        16
+      ],
+      "id": "013cf735-d18a-4242-89a7-bddf4e4298c7",
+      "name": "Parse Content"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1d8aQE4vREl0QEnf_8mPt1sutBV410q4R6Ti9c_4aw-s",
+          "mode": "list",
+          "cachedResultName": "Contentio",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1d8aQE4vREl0QEnf_8mPt1sutBV410q4R6Ti9c_4aw-s/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1d8aQE4vREl0QEnf_8mPt1sutBV410q4R6Ti9c_4aw-s/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "URL": "={{ $json.url }}",
+            "LinkedIn Post": "={{ $json.linkedin_post }}",
+            "Instagram Caption": "={{ $json.instagram_caption }}",
+            "Twitter Thread": "={{ $json.twitter_thread }}",
+            "Email Subject": "={{ $json.email_subject }}",
+            "Date": "={{ $json.date }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "URL",
+              "displayName": "URL",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "LinkedIn Post",
+              "displayName": "LinkedIn Post",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Instagram Caption",
+              "displayName": "Instagram Caption",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Twitter Thread",
+              "displayName": "Twitter Thread",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Email Subject",
+              "displayName": "Email Subject",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Date",
+              "displayName": "Date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        960,
+        96
+      ],
+      "id": "9227a91e-22de-40ef-8c05-4a5978c08054",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LZ6jTkjKVBAaGA4W",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Form Trigger": {
+      "main": [
+        [
+          {
+            "node": "Scrape Blog",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scrape Blog": {
+      "main": [
+        [
+          {
+            "node": "Groq AI",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq AI": {
+      "main": [
+        [
+          {
+            "node": "Parse Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Content": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "28733ee0-d523-4c91-869e-7e005a53d86e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bfec1d611802c98391d07ef604a3a3ef8c92ba7da5fbe3d50717b9cbe18a9ca7"
+  },
+  "id": "cogKT57ohlzYzADs",
+  "tags": []
+}
