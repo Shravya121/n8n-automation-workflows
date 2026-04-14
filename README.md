@@ -67,6 +67,6 @@ Tools: n8n, Groq AI, Google Forms, Gmail
 ---
 
 ## About
-Built by [Your Name]
-- Email: your@email.com
-- LinkedIn: linkedin.com/in/yourprofile
+Built by Shravya HM
+- Email: Shravyajain98@email.com
+
