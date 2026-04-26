@@ -1,0 +1,978 @@
+{
+  "name": "Expense Bot v4 — Groq (Text + Voice + Image)",
+  "nodes": [
+    {
+      "parameters": {
+        "updates": [
+          "message"
+        ],
+        "additionalFields": {}
+      },
+      "name": "Telegram Trigger",
+      "type": "n8n-nodes-base.telegramTrigger",
+      "typeVersion": 1,
+      "position": [
+        -256,
+        -416
+      ],
+      "webhookId": "expense-bot-v4",
+      "id": "2e2556a7-254c-46ea-a25d-809e5fe2ab5f",
+      "credentials": {
+        "telegramApi": {
+          "id": "2obUbsqHDKkwOXWb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const msg = items[0].json.message;\nconst chatId = String(msg.chat.id);\nconst firstName = msg.chat.first_name || '';\n\nif (msg.text) {\n  return [{ json: { inputType: 'text', text: msg.text.trim(), chatId, firstName, fileId: '' } }];\n}\nif (msg.voice || msg.audio) {\n  return [{ json: { inputType: 'voice', text: '', chatId, firstName, fileId: (msg.voice || msg.audio).file_id } }];\n}\nif (msg.photo) {\n  return [{ json: { inputType: 'image', text: '', chatId, firstName, fileId: msg.photo[msg.photo.length - 1].file_id } }];\n}\nreturn [{ json: { inputType: 'unsupported', text: '', chatId, firstName, fileId: '' } }];"
+      },
+      "name": "Detect Type",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -64,
+        -400
+      ],
+      "id": "65255c2b-1c00-4684-9cd4-81878e7487cd"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"inputType\"]}}",
+              "value2": "text"
+            }
+          ]
+        }
+      },
+      "name": "Is Text?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        112,
+        -384
+      ],
+      "id": "3f932343-600b-4bda-8f13-a4b922f3e7a2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{$json[\"inputType\"]}}",
+              "value2": "voice"
+            }
+          ]
+        }
+      },
+      "name": "Is Voice?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        352,
+        -416
+      ],
+      "id": "c42de5de-208e-468d-95c4-225951f3b085"
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: {\n  text: items[0].json.text,\n  chatId: items[0].json.chatId,\n  firstName: items[0].json.firstName\n} }];"
+      },
+      "name": "Ready — Text",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        160,
+        -144
+      ],
+      "id": "c44a8ed1-d14f-43a2-8071-9c621ac05873"
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = items[0].json;\nreturn [{ json: {\n  fileId: item.fileId,\n  chatId: item.chatId,\n  firstName: item.firstName,\n  inputType: 'voice'\n} }];"
+      },
+      "name": "Prep Voice",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        368,
+        -144
+      ],
+      "id": "8b636002-0b82-4cb9-b58b-86bcd9bc0dce"
+    },
+    {
+      "parameters": {
+        "functionCode": "const item = items[0].json;\nreturn [{ json: {\n  fileId: item.fileId,\n  chatId: item.chatId,\n  firstName: item.firstName,\n  inputType: 'image'\n} }];"
+      },
+      "name": "Prep Image",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        608,
+        -128
+      ],
+      "id": "a75087ed-76e5-4c2c-96e6-4115f644e8df"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot8673699203:AAEPsuf5W25QotjcxfXjWpeURnnTcvng7N8/getFile?file_id={{$json[\"fileId\"]}}",
+        "options": {}
+      },
+      "name": "Voice — Get File Path",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        416,
+        144
+      ],
+      "id": "614c1692-1afc-4e23-9959-8a0bc1ef9ae6"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot8673699203:AAEPsuf5W25QotjcxfXjWpeURnnTcvng7N8/{{$json[\"filePath\"]}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "Voice — Download",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -256,
+        544
+      ],
+      "id": "316e679d-4f90-429c-b314-54a596ac0031"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.groq.com/openai/v1/audio/transcriptions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "data"
+            },
+            {
+              "name": "model",
+              "value": "whisper-large-v3-turbo"
+            },
+            {
+              "name": "prompt",
+              "value": "expense amount category description, example: 250 food lunch at restaurant"
+            },
+            {
+              "name": "response_format",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "name": "Voice — Groq Whisper",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        -96,
+        992
+      ],
+      "id": "9d01c265-e293-4823-b0fa-62778cb93e51",
+      "credentials": {
+        "groqApi": {
+          "id": "YCrPGqUbTddlN2of",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "const transcribed = items[0].json.text || '';\nconst kept = $('Code in JavaScript').first().json;\nreturn [{ json: {\n  text: transcribed.trim(),\n  chatId: kept.chatId,\n  firstName: kept.firstName\n} }];"
+      },
+      "name": "Ready — Voice",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        64,
+        800
+      ],
+      "id": "a9dd7876-a77d-4109-a904-409556fa9ea2"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/bot8673699203:AAEPsuf5W25QotjcxfXjWpeURnnTcvng7N8/getFile?file_id={{$json[\"fileId\"]}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "groqApi",
+        "options": {}
+      },
+      "name": "Image — Get File Path",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        608,
+        64
+      ],
+      "id": "47a906f6-3507-4dbf-a90c-ca4489fc984f",
+      "credentials": {
+        "groqApi": {
+          "id": "YCrPGqUbTddlN2of",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "return [{ json: {\n  filePath: items[0].json.result.file_path,\n  chatId: $('Prep Image').first().json.chatId,\n  firstName: $('Prep Image').first().json.firstName\n} }];"
+      },
+      "name": "Image — Keep ChatId 1",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        624,
+        224
+      ],
+      "id": "e227dd6c-8ded-4124-9c08-5efbb81b7ab3"
+    },
+    {
+      "parameters": {
+        "url": "=https://api.telegram.org/file/bot8673699203:AAEPsuf5W25QotjcxfXjWpeURnnTcvng7N8/{{$json[\"filePath\"]}}",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "name": "Image — Download",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [
+        640,
+        416
+      ],
+      "id": "eea8c1a7-7826-45be-b567-bf68736d06ed"
+    },
+    {
+      "parameters": {
+        "functionCode": "const text = items[0].json.text || '';\nconst chatId = items[0].json.chatId;\nconst firstName = items[0].json.firstName;\n\nreturn [{ json: {\n  text: text,\n  chatId: chatId,\n  firstName: firstName\n} }];"
+      },
+      "name": "Ready — Image",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        976,
+        704
+      ],
+      "id": "76d54ca8-1d78-4a0e-8ad9-31e113aae618"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json[\"valid\"]}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "name": "Valid?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        384,
+        1184
+      ],
+      "id": "cd09df21-4de2-4f18-aa90-29eda3dbbfc6"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1O9Bhc1GFloeIzS094G-x4E_41_d-j_Dgj4iKijgCHM0",
+          "mode": "list",
+          "cachedResultName": "my_expense",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O9Bhc1GFloeIzS094G-x4E_41_d-j_Dgj4iKijgCHM0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Sheet1",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Amount": "={{$json[\"amount\"]}}",
+            "Category": "={{$json[\"category\"]}}",
+            "Description": "={{$json[\"description\"]}}",
+            "UserID": "={{$('Code in JavaScript1').item.json.chatId}}",
+            "Date ": "={{new Date().toISOString().split('T')[0]}}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Date ",
+              "displayName": "Date ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "Amount",
+              "displayName": "Amount",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Category",
+              "displayName": "Category",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Description",
+              "displayName": "Description",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "UserID",
+              "displayName": "UserID",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "name": "Append to Sheet",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -80,
+        1408
+      ],
+      "id": "ee808db9-aa10-46bb-8cb2-415f1abd4225",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LZ6jTkjKVBAaGA4W",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json[\"chatId\"]}}",
+        "text": "={{$json[\"errorMsg\"]}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Reply Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        832,
+        1344
+      ],
+      "id": "bfc86731-6d03-4d58-ae42-044de51dfe4a",
+      "webhookId": "2e1dfab9-d438-4e18-b98a-78ba96393439",
+      "credentials": {
+        "telegramApi": {
+          "id": "2obUbsqHDKkwOXWb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "={{$('Code in JavaScript1').item.json.chatId}}",
+        "text": "=✅ *Saved!*\n💰 ₹{{$('Code in JavaScript1').item.json.amount}} — {{$('Code in JavaScript1').item.json.category}}{{$('Code in JavaScript1').item.json.description ? '\\n📝 ' + $('Code in JavaScript1').item.json.description : ''}}\n📅 {{$('Code in JavaScript1').item.json.date}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Reply Confirmed",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        1664
+      ],
+      "id": "d11becbb-1821-43df-89c3-c4c50c813901",
+      "webhookId": "1cba55c1-8682-4b82-b42a-6f1e42a46709",
+      "credentials": {
+        "telegramApi": {
+          "id": "2obUbsqHDKkwOXWb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "triggerAtHour": 20
+            }
+          ]
+        }
+      },
+      "name": "Daily Schedule",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1,
+      "position": [
+        -480,
+        2176
+      ],
+      "id": "fdd0dc8f-62cd-40fb-821e-360283ca68ac"
+    },
+    {
+      "parameters": {
+        "functionCode": "const today = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Kolkata' });\nconst sample = items[0].json;\nreturn [{ json: { \n  today,\n  dateValue: sample.Date,\n  dateType: typeof sample.Date,\n  match: sample.Date === today\n}}];"
+      },
+      "name": "Get Unique Users",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        16,
+        2176
+      ],
+      "id": "c77c7e73-3cf8-4edf-baf0-81f5c45b8534"
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "name": "Loop Users",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 2,
+      "position": [
+        272,
+        2192
+      ],
+      "id": "ffdac58e-15b4-451d-8f65-e6c83dd8d692"
+    },
+    {
+      "parameters": {
+        "functionCode": "const { userId, rows } = items[0].json;\nif (!rows || rows.length === 0) return [];\nconst icons = { food:'🍽', transport:'🚗', shopping:'🛍', entertainment:'🎬', health:'💊', utilities:'💡', other:'📦' };\nconst byCategory = {};\nlet total = 0;\nfor (const row of rows) {\n  const cat = (row.Category || 'other').toLowerCase();\n  const amt = parseFloat(row.Amount) || 0;\n  byCategory[cat] = (byCategory[cat] || 0) + amt;\n  total += amt;\n}\nconst lines = Object.entries(byCategory).sort((a,b)=>b[1]-a[1]).map(([cat,amt])=>`${icons[cat]||'📦'} ${cat}: ₹${amt.toFixed(2)}`);\nconst dateStr = new Date().toLocaleDateString('en-IN', { weekday:'long', day:'numeric', month:'long' });\nconst message = [`📊 *Daily Summary — ${dateStr}*`,'', ...lines,'',`💰 *Total: ₹${total.toFixed(2)}*`,`_${rows.length} expense${rows.length!==1?'s':''}_`].join('\\n');\nreturn [{ json: { chatId: userId, message } }];"
+      },
+      "name": "Build Summary",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        704,
+        2192
+      ],
+      "id": "3dbedd91-c198-4685-a186-5d6951988675"
+    },
+    {
+      "parameters": {
+        "chatId": "={{$json[\"chatId\"]}}",
+        "text": "={{$json[\"message\"]}}",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "name": "Send Summary",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1,
+      "position": [
+        1088,
+        2400
+      ],
+      "id": "d0168c62-8258-4324-9662-8e8290da68ee",
+      "webhookId": "bab84940-e859-4f5b-8993-15d5ec440cd5",
+      "credentials": {
+        "telegramApi": {
+          "id": "2obUbsqHDKkwOXWb",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: {\n  filePath: items[0].json.result.file_path,\n  chatId: $('Prep Voice').first().json.chatId,\n  firstName: $('Prep Voice').first().json.firstName\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        48,
+        256
+      ],
+      "id": "cd440d21-be4a-4309-89b0-8f48ba3ae290",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const { text, chatId, firstName } = items[0].json;\nconst raw = (text || '').trim();\n\nif (!raw || raw.toUpperCase() === 'UNCLEAR') {\n  return [{ json: {\n    valid: false, chatId,\n    errorMsg: \"Couldn't read the expense. Try: '250 food lunch'\"\n  }}];\n}\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://api.groq.com/openai/v1/chat/completions',\n  headers: {\n    'Authorization': `Bearer your_api_key`,\n    'Content-Type': 'application/json'\n  },\n  body: {\n    model: 'llama-3.3-70b-versatile',\n    max_tokens: 100,\n    messages: [\n      {\n        role: 'system',\n       content: `You are an expense parser. Extract the numeric amount, category and description from any natural language message.\nEven if the message is informal like \"Today's expenses 300\" or \"chai 20\" or \"spent 150 uber\", extract the number as amount.\nCategory must be one of: food, transport, shopping, health, utilities, entertainment, other. Guess the best category.\nReply ONLY in this exact format with pipe separators: amount|category|description\nExample: 250|food|lunch at MTR\nOnly reply UNCLEAR if there is absolutely no number in the message.`\n      },\n      { role: 'user', content: raw }\n    ]\n  },\n  json: true\n});\n\nconst result = response.choices?.[0]?.message?.content?.trim();\n\nif (!result || result === 'UNCLEAR') {\n  return [{ json: {\n    valid: false, chatId,\n    errorMsg: `Couldn't understand: \"${raw}\"\\n\\nTry: \"250 food lunch\"`\n  }}];\n}\n\nconst parts = result.split('|');\nconst amount = parseFloat(parts[0]);\nconst category = (parts[1] || 'other').toLowerCase().trim();\nconst description = (parts[2] || '').trim();\nconst date = new Date().toISOString().split('T')[0];\n\nif (isNaN(amount) || amount <= 0) {\n  return [{ json: {\n    valid: false, chatId,\n    errorMsg: `Couldn't find an amount in: \"${raw}\"`\n  }}];\n}\n\nreturn [{ json: {\n  valid: true, chatId, firstName,\n  amount, category, description, date\n}}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        512,
+        736
+      ],
+      "id": "e0c4144f-e665-4cd8-b540-42da1f71e6e8",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst binaryData = item.binary.data;\n\nitem.binary.data = {\n  ...binaryData,\n  fileName: 'audio.ogg',\n  fileExtension: 'ogg',\n  mimeType: 'audio/ogg'\n};\n\nreturn [item];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -48,
+        544
+      ],
+      "id": "b23c3fe7-26a2-467b-85ec-df0697e93ee5",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = items[0];\n\nitem.binary.data = {\n  ...item.binary.data,\n  mimeType: 'image/jpeg',\n  fileExtension: 'jpg',\n  fileName: 'image.jpg'\n};\n\nreturn [item];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        416
+      ],
+      "id": "2322d162-e883-49e0-b8bf-f14fb4c1c65f",
+      "name": "Fix Image Formate"
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = items[0];\nconst chatId = item.json.chatId;\nconst firstName = item.json.firstName;\nconst filePath = item.json.filePath;\n\nconst imageUrl = `https://api.telegram.org/file/bot8673699203:AAEPsuf5W25QotjcxfXjWpeURnnTcvng7N8/${filePath}`;\n\nconst response = await this.helpers.httpRequest({\n  method: 'POST',\n  url: 'https://api.groq.com/openai/v1/chat/completions',\n  headers: {\n    'Authorization': 'Bearer your_api_key',\n    'Content-Type': 'application/json'\n  },\n  body: {\n    model: 'meta-llama/llama-4-scout-17b-16e-instruct',\n    max_tokens: 100,\n    messages: [\n      {\n        role: 'user',\n        content: [\n          {\n            type: 'image_url',\n            image_url: {\n              url: imageUrl\n            }\n          },\n          {\n            type: 'text',\n            text: 'Extract the total amount from this receipt. Reply ONLY in this format: amount category description. Example: 245.00 food dinner. Category must be one word: food/transport/shopping/health/utilities/other. If no amount visible reply: UNCLEAR'\n          }\n        ]\n      }\n    ]\n  },\n  json: true\n});\n\nconst result = response.choices?.[0]?.message?.content?.trim() || 'UNCLEAR';\n\nreturn [{ json: {\n  text: result,\n  chatId,\n  firstName\n} }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1056,
+        416
+      ],
+      "id": "696eec6c-355b-43b2-ad65-b0a0e01acd47",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1O9Bhc1GFloeIzS094G-x4E_41_d-j_Dgj4iKijgCHM0",
+          "mode": "list",
+          "cachedResultName": "my_expense",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O9Bhc1GFloeIzS094G-x4E_41_d-j_Dgj4iKijgCHM0/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O9Bhc1GFloeIzS094G-x4E_41_d-j_Dgj4iKijgCHM0/edit#gid=0"
+        },
+        "filtersUI": {
+          "values": []
+        },
+        "options": {
+          "outputFormatting": {
+            "values": {
+              "general": "FORMATTED_VALUE",
+              "date": "FORMATTED_STRING"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -240,
+        2160
+      ],
+      "id": "1fcfc59d-bb2d-4fe6-8d9a-f07a88422149",
+      "name": "Get row(s) in sheet",
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "LZ6jTkjKVBAaGA4W",
+          "name": "Google Sheets OAuth2 API"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Telegram Trigger": {
+      "main": [
+        [
+          {
+            "node": "Detect Type",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Detect Type": {
+      "main": [
+        [
+          {
+            "node": "Is Text?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Text?": {
+      "main": [
+        [
+          {
+            "node": "Ready — Text",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Is Voice?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Voice?": {
+      "main": [
+        [
+          {
+            "node": "Prep Voice",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Prep Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Voice": {
+      "main": [
+        [
+          {
+            "node": "Voice — Get File Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice — Get File Path": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice — Download": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice — Groq Whisper": {
+      "main": [
+        [
+          {
+            "node": "Ready — Voice",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prep Image": {
+      "main": [
+        [
+          {
+            "node": "Image — Get File Path",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image — Get File Path": {
+      "main": [
+        [
+          {
+            "node": "Image — Keep ChatId 1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image — Keep ChatId 1": {
+      "main": [
+        [
+          {
+            "node": "Image — Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Image — Download": {
+      "main": [
+        [
+          {
+            "node": "Fix Image Formate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ready — Text": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ready — Voice": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ready — Image": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Valid?": {
+      "main": [
+        [
+          {
+            "node": "Append to Sheet",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reply Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append to Sheet": {
+      "main": [
+        [
+          {
+            "node": "Reply Confirmed",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Daily Schedule": {
+      "main": [
+        [
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Unique Users": {
+      "main": [
+        [
+          {
+            "node": "Loop Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Users": {
+      "main": [
+        [
+          {
+            "node": "Build Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary": {
+      "main": [
+        [
+          {
+            "node": "Send Summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Summary": {
+      "main": [
+        [
+          {
+            "node": "Loop Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Voice — Download",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Valid?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Voice — Groq Whisper",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix Image Formate": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Ready — Image",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "Get Unique Users",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "726e0e14-3356-4a6e-85b2-ef0e06d331b6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "bfec1d611802c98391d07ef604a3a3ef8c92ba7da5fbe3d50717b9cbe18a9ca7"
+  },
+  "id": "n1SZRgVhdaJ90Eik",
+  "tags": []
+}
