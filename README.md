@@ -68,5 +68,5 @@ Tools: n8n, Groq AI, Google Forms, Gmail
 
 ## About
 Built by Shravya HM
-- Email: Shravyajain98@email.com
+- Email: Shravyajain98@gmail.com
 
